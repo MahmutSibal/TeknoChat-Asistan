@@ -1,0 +1,109 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
+@import "tailwindcss";
+
+:root {
+  --color-bg: #ffffff;
+  --color-bg-subtle: #f3f7f9;
+  --color-border: #e1e8ed;
+  --color-text: #16324a;
+  --color-text-muted: #6b8299;
+  --color-accent: #3d7a96;
+  --color-accent-hover: #2f6480;
+  --color-bubble-user: #3d7a96;
+  --color-bubble-ai: #eef3f5;
+
+  --color-nav-glass: rgba(255, 255, 255, 0.55);
+  --color-header-glass: rgba(255, 255, 255, 0.75);
+
+  /* Sidebar stays brand navy in both light and dark mode — its own token set so its
+     background/text never flips with the content-area theme. */
+  --color-sidebar: #14293e;
+  --color-sidebar-border: rgba(255, 255, 255, 0.08);
+  --color-sidebar-text: #eef3f6;
+  --color-sidebar-text-muted: #90a8bd;
+  --color-sidebar-hover: rgba(255, 255, 255, 0.07);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f1c2b;
+    --color-bg-subtle: #14293e;
+    --color-border: #24384a;
+    --color-text: #e4edf2;
+    --color-text-muted: #8ba3b8;
+    --color-accent: #5b9bb5;
+    --color-accent-hover: #6ba9c2;
+    --color-bubble-user: #3d7a96;
+    --color-bubble-ai: #1c3348;
+
+    --color-nav-glass: rgba(20, 41, 62, 0.55);
+    --color-header-glass: rgba(15, 28, 43, 0.75);
+
+    --color-sidebar: #0a1622;
+    --color-sidebar-border: rgba(255, 255, 255, 0.08);
+    --color-sidebar-text: #eef3f6;
+    --color-sidebar-text-muted: #7f97ac;
+    --color-sidebar-hover: rgba(255, 255, 255, 0.06);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: "Poppins", -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+a,
+button {
+  font-family: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.card-modern {
+  border-radius: 1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+}
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bubble-enter {
+  animation: bubble-in 0.25s ease-out;
+}

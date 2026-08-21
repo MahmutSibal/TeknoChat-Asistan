@@ -1,0 +1,30 @@
+## .NET
+bin/
+obj/
+*.user
+publish/
+publish_output/
+
+## Secrets — real values live only on the deployed server / local machine.
+## See src/TeknofestAsistan.API/appsettings.json.example for the required shape.
+src/TeknofestAsistan.API/appsettings.json
+
+## Visual Studio / Rider / Claude Code
+.vs/
+.idea/
+.claude/
+*.suo
+
+## Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+## Logs
+logs/
+*.log
+
+## OS
+.DS_Store
+Thumbs.db

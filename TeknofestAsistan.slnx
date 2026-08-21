@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TeknofestAsistan.API/TeknofestAsistan.API.csproj" />
+    <Project Path="src/TeknofestAsistan.Application/TeknofestAsistan.Application.csproj" />
+    <Project Path="src/TeknofestAsistan.Domain/TeknofestAsistan.Domain.csproj" />
+    <Project Path="src/TeknofestAsistan.Infrastructure/TeknofestAsistan.Infrastructure.csproj" />
+  </Folder>
+</Solution>

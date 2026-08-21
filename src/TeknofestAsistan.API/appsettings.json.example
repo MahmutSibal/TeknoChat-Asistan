@@ -1,0 +1,42 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_SQL_SERVER,1433; Database=YOUR_DB; User Id=YOUR_USER; Password=YOUR_PASSWORD; Encrypt=False; TrustServerCertificate=True; MultipleActiveResultSets=True;"
+  },
+  "Ollama": {
+    "BaseUrl": "http://localhost:11434",
+    "ChatModel": "qwen2.5:7b",
+    "EmbeddingModel": "bge-m3"
+  },
+  "Jwt": {
+    "SecretKey": "REPLACE_WITH_A_LONG_RANDOM_SECRET",
+    "Issuer": "TeknofestAsistan",
+    "Audience": "TeknofestAsistan",
+    "ExpiryMinutes": 120
+  },
+  "SeedAdmin": {
+    "Email": "admin@teknofest.local",
+    "Password": "REPLACE_WITH_A_STRONG_PASSWORD"
+  },
+  "Google": {
+    "ClientId": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com"
+  },
+  "Recaptcha": {
+    "SecretKey": "YOUR_GOOGLE_RECAPTCHA_V2_SECRET_KEY",
+    "DevBypassToken": "REPLACE_WITH_A_RANDOM_SECRET_MATCHING_FRONTEND_ENV_LOCAL"
+  },
+  "Brevo": {
+    "ApiKey": "YOUR_BREVO_API_KEY",
+    "SenderEmail": "your-verified-sender@example.com",
+    "SenderName": "TeknoChat Asistan"
+  },
+  "Cors": {
+    "AllowedOrigins": [ "http://localhost:3000", "http://localhost:5173", "http://localhost:4200" ]
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
