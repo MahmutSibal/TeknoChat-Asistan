@@ -207,6 +207,8 @@ uygulamayı kullanır, arayüz ve erişilebilir sayfalar role göre değişir.
 - Sunucu/teknoloji parmak izini gizleyen header temizliği (`Server`, `X-Powered-By` kaldırılır)
 - E-posta doğrulama zorunlu kayıt akışı, şifre sıfırlama kod tabanlı ve süreli
 - Sırlar (`appsettings.json`, `.env.local`) repoya dahil edilmez — bkz. [Yerel Kurulum](#yerel-kurulum)
+- Tüm veritabanı erişimi EF Core'un parametreli LINQ sorgu katmanı üzerinden yapılır (ham/interpolate edilmiş SQL veya `SqlCommand` kullanılmaz) — klasik SQL injection'a karşı yapısal olarak korunur
+- Dosya yükleme uç noktası uzantıya değil dosyanın gerçek baytlarına (magic number) bakarak doğrular — yeniden adlandırılmış/sahte dosya türleri PDF/DOCX ayrıştırıcısına ulaşmadan reddedilir — ve istek başına 20 MB boyut sınırı uygular
 
 ## Yerel Kurulum
 
@@ -248,3 +250,27 @@ Backend ve frontend, IIS tabanlı MonsterASP.NET barındırmasına Web Deploy (`
 ile ayrı site olarak dağıtılır. Yerel Ollama sunucusu, Cloudflare Quick Tunnel ile
 geçici bir genel URL üzerinden backend'e bağlanır; bu URL her tünel yeniden
 başlatıldığında değişir ve backend yapılandırmasında güncellenmesi gerekir.
+
+### Sırları Ortam Değişkenleri ile Yönetme (opsiyonel)
+
+ASP.NET Core, `appsettings.json`'daki her değeri aynı ada sahip bir ortam değişkeniyle
+otomatik olarak ezer (ek kod gerekmez) — iç içe anahtarlar `__` (çift alt çizgi) ile
+ayrılır. Barındırma paneliniz süreç başına ortam değişkeni tanımlamayı destekliyorsa,
+en hassas değerleri `appsettings.json` dosyasının kendisine yazmak yerine bu şekilde
+verebilirsiniz:
+
+```
+ConnectionStrings__DefaultConnection=...
+Jwt__SecretKey=...
+Claude__ApiKey=...
+Recaptcha__SecretKey=...
+Recaptcha__DevBypassToken=...
+Brevo__ApiKey=...
+```
+
+> Not: Paylaşımlı IIS barındırmada ortam değişkenleri genellikle yine `web.config`
+> içindeki `<aspNetCore><environmentVariables>` bloğuna yazılır — yani sunucu diskinde
+> düz metin olarak durmaya devam ederler, sadece dosya değişir. Gerçek kazanım, barındırma
+> sağlayıcınız değişkenleri ayrı, şifreli bir "secrets" panelinde tutuyorsa ortaya çıkar.
+> Bu ortamda asıl önemli olan, `appsettings.json`'ın hâlâ `.gitignore` ile repodan hariç
+> tutulması ve sunucu dosya izinlerinin dar tutulmasıdır.

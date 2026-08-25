@@ -1,6 +1,6 @@
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=YOUR_SQL_SERVER,1433; Database=YOUR_DB; User Id=YOUR_USER; Password=YOUR_PASSWORD; Encrypt=False; TrustServerCertificate=True; MultipleActiveResultSets=True;"
+    "DefaultConnection": "Server=YOUR_SQL_SERVER,1433; Database=YOUR_DB; User Id=YOUR_USER; Password=YOUR_PASSWORD; Encrypt=True; TrustServerCertificate=True; MultipleActiveResultSets=True;"
   },
   "Ollama": {
     "BaseUrl": "http://localhost:11434",
@@ -23,6 +23,10 @@
   "Recaptcha": {
     "SecretKey": "YOUR_GOOGLE_RECAPTCHA_V2_SECRET_KEY",
     "DevBypassToken": "REPLACE_WITH_A_RANDOM_SECRET_MATCHING_FRONTEND_ENV_LOCAL"
+  },
+  "Claude": {
+    "ApiKey": "YOUR_ANTHROPIC_API_KEY",
+    "Model": "claude-haiku-4-5-20251001"
   },
   "Brevo": {
     "ApiKey": "YOUR_BREVO_API_KEY",

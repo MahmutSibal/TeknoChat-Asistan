@@ -16,6 +16,7 @@ export const confidenceColors: Record<ConfidenceLevel, string> = {
 
 export const answerModeLabels: Record<AnswerMode, string> = {
   [AnswerMode.YapayZeka]: "Yapay Zeka Yanıtı",
+  [AnswerMode.ClaudeBulut]: "Claude Bulut Yanıtı",
   [AnswerMode.TemelArama]: "Temel Arama Modu",
 };
 

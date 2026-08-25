@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, FileText, Search } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Cloud, FileText, Search } from "lucide-react";
 import type { ChatQueryResponse } from "../types/api";
 import { AnswerMode, ConfidenceLevel } from "../types/api";
 import { confidenceLabels, confidenceColors, ticketStatusLabels, answerModeLabels } from "../lib/labels";
@@ -54,6 +54,15 @@ export function AiBubble({ response }: { response: ChatQueryResponse }) {
               >
                 <Search size={13} strokeWidth={2} aria-hidden />
                 Yapay zeka şu anda ulaşılamıyor — bu yanıt, doğrulanmış kaynaklarda doğrudan arama ile bulundu.
+              </p>
+            )}
+            {response.answerMode === AnswerMode.ClaudeBulut && (
+              <p
+                className="mb-2 flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
+                style={{ background: "rgba(139, 92, 246, 0.12)", color: "#7c3aed" }}
+              >
+                <Cloud size={13} strokeWidth={2} aria-hidden />
+                Yerel yapay zekaya şu anda ulaşılamıyor — bu yanıt bulut yapay zeka ile üretildi.
               </p>
             )}
             <p className="whitespace-pre-wrap">{response.answerText}</p>

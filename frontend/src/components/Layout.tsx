@@ -23,8 +23,12 @@ import { useAuth, roleLabels } from "../context/AuthContext";
 import { CompetitionProvider, useCompetitions } from "../context/CompetitionContext";
 import { SignalRProvider } from "../context/SignalRContext";
 import { ToastContainer } from "./ToastContainer";
-import { UserRole } from "../types/api";
+import { UserRole, type SystemStatus } from "../types/api";
 import { useSlidingIndicator } from "../lib/useSlidingIndicator";
+import { useHideUrlBar } from "../lib/useHideUrlBar";
+import { systemApi } from "../api/resources";
+
+const STATUS_POLL_INTERVAL_MS = 60_000;
 
 interface NavItem {
   to: string;
@@ -115,6 +119,57 @@ function CompetitionSelector() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/// Polled, not pushed — a slow-changing status doesn't need SignalR, and the backend caches
+/// results heavily (see SystemStatusService) so this never adds meaningful traffic to Ollama/Claude.
+function SystemStatusIndicators() {
+  const [status, setStatus] = useState<SystemStatus | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      systemApi
+        .status()
+        .then((s) => {
+          if (!cancelled) setStatus(s);
+        })
+        .catch(() => {});
+    };
+    load();
+    const interval = setInterval(load, STATUS_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  if (!status) return null;
+
+  const items: { label: string; active: boolean }[] = [
+    { label: "Ollama", active: status.ollama },
+    { label: "Claude Bulut", active: status.claudeBulut },
+    { label: "Temel Arama", active: status.temelArama },
+  ];
+
+  return (
+    <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 px-2">
+      {items.map((item) => (
+        <span
+          key={item.label}
+          className="flex items-center gap-1 text-[10px]"
+          title={item.active ? `${item.label} şu anda aktif` : `${item.label} şu anda erişilemiyor`}
+          style={{ color: "var(--color-sidebar-text-muted)" }}
+        >
+          <span
+            className="h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ background: item.active ? "#22c55e" : "#6b7280" }}
+          />
+          {item.label}
+        </span>
+      ))}
     </div>
   );
 }
@@ -226,6 +281,7 @@ function SidebarContent({
       </div>
 
       <div className="border-t pt-3" style={{ borderColor: "var(--color-sidebar-border)" }}>
+        {!collapsed && <SystemStatusIndicators />}
         {!collapsed && (
           <p className="truncate px-2 text-xs" style={{ color: "var(--color-sidebar-text-muted)" }}>
             {user.fullName} · {user.email}
@@ -252,6 +308,7 @@ export function Layout() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === "true");
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  useHideUrlBar();
 
   useEffect(() => setMobileOpen(false), [location.pathname]);
 

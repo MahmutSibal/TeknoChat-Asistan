@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using TeknofestAsistan.Application.Common;
 using TeknofestAsistan.Application.Interfaces;
 using TeknofestAsistan.Infrastructure.AI;
@@ -37,11 +38,33 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromMinutes(2);
         });
 
-        services.AddHttpClient<IAnswerGenerationService, OllamaAnswerGenerationService>(client =>
+        // Two IAnswerGenerationService implementations, registered under keys so ChatQueryService
+        // can try the local model first and fall back to the cloud one — see ISystemStatusService
+        // for how their live/down status is tracked without adding extra traffic.
+        services.AddHttpClient<OllamaAnswerGenerationService>(client =>
         {
             client.BaseAddress = new Uri(ollamaBaseUrl);
             client.Timeout = TimeSpan.FromMinutes(3);
         });
+        services.AddKeyedScoped<IAnswerGenerationService>("ollama", (sp, _) => sp.GetRequiredService<OllamaAnswerGenerationService>());
+
+        services.Configure<ClaudeOptions>(configuration.GetSection(ClaudeOptions.SectionName));
+        services.AddHttpClient<ClaudeAnswerGenerationService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.anthropic.com");
+            client.Timeout = TimeSpan.FromMinutes(2);
+            client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+        }).ConfigureHttpClient((sp, client) =>
+        {
+            var apiKey = sp.GetRequiredService<IOptions<ClaudeOptions>>().Value.ApiKey;
+            if (!string.IsNullOrEmpty(apiKey))
+            {
+                client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+            }
+        });
+        services.AddKeyedScoped<IAnswerGenerationService>("claude", (sp, _) => sp.GetRequiredService<ClaudeAnswerGenerationService>());
+
+        services.AddSingleton<ISystemStatusService, SystemStatusService>();
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();

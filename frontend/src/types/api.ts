@@ -31,6 +31,13 @@ export enum SupportTicketStatus {
 export enum AnswerMode {
   YapayZeka = 0,
   TemelArama = 1,
+  ClaudeBulut = 2,
+}
+
+export interface SystemStatus {
+  ollama: boolean;
+  claudeBulut: boolean;
+  temelArama: boolean;
 }
 
 export interface AuthResponse {

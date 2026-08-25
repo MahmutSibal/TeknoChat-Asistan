@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TeknofestAsistan.Application.Common;
 using TeknofestAsistan.Application.Dtos;
@@ -13,7 +14,9 @@ namespace TeknofestAsistan.Application.Services;
 public class ChatQueryService(
     IUnitOfWork unitOfWork,
     IEmbeddingService embeddingService,
-    IAnswerGenerationService answerGenerationService,
+    [FromKeyedServices("ollama")] IAnswerGenerationService ollamaAnswerGenerationService,
+    [FromKeyedServices("claude")] IAnswerGenerationService claudeAnswerGenerationService,
+    ISystemStatusService systemStatusService,
     IRealtimeNotifier realtimeNotifier,
     ILogger<ChatQueryService> logger) : IChatQueryService
 {
@@ -48,7 +51,9 @@ public class ChatQueryService(
 
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IEmbeddingService _embeddingService = embeddingService;
-    private readonly IAnswerGenerationService _answerGenerationService = answerGenerationService;
+    private readonly IAnswerGenerationService _ollamaAnswerGenerationService = ollamaAnswerGenerationService;
+    private readonly IAnswerGenerationService _claudeAnswerGenerationService = claudeAnswerGenerationService;
+    private readonly ISystemStatusService _systemStatusService = systemStatusService;
     private readonly IRealtimeNotifier _realtimeNotifier = realtimeNotifier;
     private readonly ILogger<ChatQueryService> _logger = logger;
 
@@ -67,11 +72,11 @@ public class ChatQueryService(
 
         // The AI model (embeddings/answer generation) is an external dependency that can be
         // unreachable or misconfigured. If it fails, we never fabricate an answer or surface a 500
-        // to the competitor — instead we degrade to a dependency-free keyword search over the same
-        // verified chunks (AnswerMode.TemelArama). Only when that also finds nothing do we escalate
-        // to a human, and we tell the competitor plainly which of the two happened.
+        // to the competitor — instead we degrade through progressively cheaper tiers (Ollama ->
+        // Claude cloud -> dependency-free keyword search) over the same verified chunks. Only when
+        // every tier finds nothing do we escalate to a human, and we tell the competitor plainly
+        // which tier actually answered.
         List<(DocumentChunk Chunk, double Score)> scored = [];
-        var answerMode = AnswerMode.YapayZeka;
         var semanticFailed = false;
         try
         {
@@ -80,16 +85,17 @@ public class ChatQueryService(
                 .OrderByDescending(s => s.Score)
                 .Take(MaxCitations)
                 .ToList();
+            _systemStatusService.RecordOllamaResult(true);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Soru embedding'i alınamadı (AI servisi erişilemez olabilir); temel arama moduna geçiliyor.");
             semanticFailed = true;
+            _systemStatusService.RecordOllamaResult(false);
         }
 
         if (semanticFailed)
         {
-            answerMode = AnswerMode.TemelArama;
             scored = ScoreChunksByKeyword(dto.QuestionText, candidateChunks)
                 .OrderByDescending(s => s.Score)
                 .Take(MaxCitations)
@@ -97,41 +103,54 @@ public class ChatQueryService(
         }
 
         var bestScore = scored.Count > 0 ? scored[0].Score : 0d;
-        var confidence = answerMode == AnswerMode.TemelArama
+        var confidence = semanticFailed
             ? ToKeywordConfidenceLevel(bestScore)
             : ToConfidenceLevel(bestScore);
         var isEscalated = confidence == ConfidenceLevel.Yetersiz;
 
         // No evidence clears the bar -> never fabricate an answer, hand off to a human instead.
+        // Otherwise, try each generation tier in order — a tier only needs *some* context chunks
+        // (semantic or keyword-scored), not Ollama's embeddings specifically, so Claude and the
+        // extractive fallback are attempted here too even when retrieval itself fell back.
         string? answerText = null;
-        if (!isEscalated && answerMode == AnswerMode.YapayZeka)
+        AnswerMode? answerMode = null;
+        if (!isEscalated)
         {
+            var contextChunks = scored.Select(s => s.Chunk.Content).ToList();
+            Func<string, Task>? onChunk = dto.UserId is { } askerId && dto.CorrelationId is { } correlationId
+                ? chunk => SafeNotifyAsync(() => _realtimeNotifier.SendAnswerChunkAsync(askerId, correlationId, chunk, isFinal: false, cancellationToken))
+                : null;
+
             try
             {
-                Func<string, Task>? onChunk = dto.UserId is { } askerId && dto.CorrelationId is { } correlationId
-                    ? chunk => SafeNotifyAsync(() => _realtimeNotifier.SendAnswerChunkAsync(askerId, correlationId, chunk, isFinal: false, cancellationToken))
-                    : null;
-
-                answerText = await _answerGenerationService.GenerateAnswerAsync(
-                    dto.QuestionText, scored.Select(s => s.Chunk.Content).ToList(), onChunk, cancellationToken);
-
-                if (onChunk is not null)
-                {
-                    await SafeNotifyAsync(() => _realtimeNotifier.SendAnswerChunkAsync(dto.UserId!.Value, dto.CorrelationId!, string.Empty, isFinal: true, cancellationToken));
-                }
+                answerText = await _ollamaAnswerGenerationService.GenerateAnswerAsync(dto.QuestionText, contextChunks, onChunk, cancellationToken);
+                answerMode = AnswerMode.YapayZeka;
+                _systemStatusService.RecordOllamaResult(true);
             }
             catch (Exception ex)
             {
-                // Embedding succeeded so we already have real semantically-scored chunks — no need to
-                // escalate, just fall back to returning the best-matching source text directly.
-                _logger.LogWarning(ex, "AI cevabı üretilemedi (AI servisi erişilemez olabilir); temel arama moduna geçiliyor.");
-                answerMode = AnswerMode.TemelArama;
-                answerText = BuildExtractiveAnswer(scored);
+                _logger.LogWarning(ex, "Ollama cevabı üretilemedi (AI servisi erişilemez olabilir); Claude bulut yapay zekaya geçiliyor.");
+                _systemStatusService.RecordOllamaResult(false);
+
+                try
+                {
+                    answerText = await _claudeAnswerGenerationService.GenerateAnswerAsync(dto.QuestionText, contextChunks, onChunk, cancellationToken);
+                    answerMode = AnswerMode.ClaudeBulut;
+                    _systemStatusService.RecordClaudeResult(true);
+                }
+                catch (Exception claudeEx)
+                {
+                    _logger.LogWarning(claudeEx, "Claude bulut yapay zeka da başarısız oldu; temel arama moduna geçiliyor.");
+                    _systemStatusService.RecordClaudeResult(false);
+                    answerMode = AnswerMode.TemelArama;
+                    answerText = BuildExtractiveAnswer(scored);
+                }
             }
-        }
-        else if (!isEscalated)
-        {
-            answerText = BuildExtractiveAnswer(scored);
+
+            if (onChunk is not null)
+            {
+                await SafeNotifyAsync(() => _realtimeNotifier.SendAnswerChunkAsync(dto.UserId!.Value, dto.CorrelationId!, string.Empty, isFinal: true, cancellationToken));
+            }
         }
 
         string? escalationReason = null;

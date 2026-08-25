@@ -15,6 +15,7 @@ import type {
   SourceDocumentType,
   SupportTicket,
   SupportTicketStatus,
+  SystemStatus,
   UserRole,
 } from "../types/api";
 
@@ -135,6 +136,10 @@ export const usersApi = {
 export const analyticsApi = {
   competition: (competitionId: number) =>
     apiRequest<CompetitionAnalytics>(`/api/analytics/competitions/${competitionId}`),
+};
+
+export const systemApi = {
+  status: () => apiRequest<SystemStatus>("/api/systemstatus"),
 };
 
 export type { SupportTicketStatus };

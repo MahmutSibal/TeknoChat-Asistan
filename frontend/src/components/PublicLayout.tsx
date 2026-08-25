@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useSlidingIndicator } from "../lib/useSlidingIndicator";
+import { useHideUrlBar } from "../lib/useHideUrlBar";
 
 const NAV_LINKS = [
   { to: "/about", label: "Hakkında" },
@@ -61,6 +62,7 @@ function GlassNav() {
 export function PublicLayout() {
   const { isAuthenticated } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  useHideUrlBar();
 
   return (
     <div className="flex min-h-screen flex-col" style={{ background: "var(--color-bg)", color: "var(--color-text)" }}>
