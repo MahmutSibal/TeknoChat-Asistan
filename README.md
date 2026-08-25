@@ -27,6 +27,7 @@
 - [Mimari](#mimari)
 - [Teknoloji Yığını](#teknoloji-yığını)
 - [Güvenlik](#güvenlik)
+- [Ekip](#ekip)
 - [Yerel Kurulum](#yerel-kurulum)
 - [Dağıtım (Deployment)](#dağıtım-deployment)
 
@@ -44,18 +45,27 @@ Platform dört farklı role hizmet verir: sorularını soran **Yarışmacılar**
 güncel tutan **İçerik Yöneticileri**, insana yönlenen soruları çözen **Destek Ekibi** ve
 sistemi izleyen **Sistem Yöneticileri**.
 
-### RAG'in iki modu
+### RAG'in üç katmanlı yedekleme zinciri
 
-Sistem, yanıt üretimi için iki farklı moda sahiptir ve hangisinin kullanıldığını her
-zaman kullanıcıya açıkça gösterir:
+Sistem, yanıt üretimi için sırayla denenen üç farklı katmana sahiptir ve hangisinin
+kullanıldığını her zaman kullanıcıya açıkça gösterir; bir katman başarısız olursa
+kullanıcı fark etmeden bir sonrakine geçilir, hizmet hiçbir zaman tamamen durmaz:
 
-- **Yapay Zeka Yanıtı** — Yerel bir Ollama sunucusu (qwen2.5:7b + bge-m3 embedding) üzerinden
-  tam RAG boru hattı: soru embedlenir, en alakalı kaynak parçaları bulunur, model bu
-  parçalara dayanarak doğal dilde, kaynaklı bir yanıt üretir (SignalR ile canlı akış olarak).
-- **Temel Arama Modu** — Yapay zeka sunucusuna erişilemediğinde devreye giren, dış
-  bağımlılığı olmayan anahtar kelime tabanlı bir yedek mod. Yanıt yine doğrulanmış
-  kaynaklardan gelir, sadece üretim yerine doğrudan alıntı kullanılır. Bu sayede yapay
-  zeka sunucusu kapansa bile sistem tamamen durmaz.
+1. **Yapay Zeka Yanıtı (Ollama)** — Yerel bir Ollama sunucusu (qwen2.5:7b + bge-m3 embedding)
+   üzerinden tam RAG boru hattı: soru embedlenir, en alakalı kaynak parçaları bulunur, model
+   bu parçalara dayanarak doğal dilde, kaynaklı bir yanıt üretir (SignalR ile canlı akış olarak).
+2. **Claude Bulut Yanıtı** — Ollama'ya erişilemediğinde devreye giren, Anthropic Claude API
+   üzerinden çalışan bulut tabanlı ikinci RAG katmanı; aynı kaynak parçalarını kullanarak
+   aynı şekilde kaynaklı, akan bir yanıt üretir. Kullanıcıya bu yanıtın bulut yapay zeka ile
+   üretildiği ayrıca belirtilir.
+3. **Temel Arama Modu** — Hem Ollama hem Claude'a erişilemediğinde devreye giren, dış
+   bağımlılığı olmayan anahtar kelime tabanlı bir yedek mod. Yanıt yine doğrulanmış
+   kaynaklardan gelir, sadece üretim yerine doğrudan alıntı kullanılır.
+
+Panelin kenar çubuğunda, her üç katmanın o an canlı/erişilebilir olup olmadığını gösteren
+küçük durum noktaları bulunur. Gereksiz yapay zeka trafiği oluşturmamak için bu durumlar
+agresif şekilde canlı yoklanmaz — sonuçlar önbelleğe alınır (Ollama 60 sn, Claude 5 dk) ve
+gerçek sohbet isteklerinin sonucundan da güncellenir.
 
 ## Canlı Demo
 
@@ -64,9 +74,10 @@ zaman kullanıcıya açıkça gösterir:
 | **Uygulama** | [teknochat.tryasp.net](https://teknochat.tryasp.net) |
 | **API** | [technochatapi.runasp.net](https://technochatapi.runasp.net) |
 
-> Not: Yapay zeka yanıt üretimi, demo sırasında yerel bir bilgisayarda çalışan Ollama
-> sunucusuna bağlıdır. O sunucu kapalıyken sistem otomatik olarak Temel Arama Modu'na
-> geçer — hizmet kesintiye uğramaz, sadece yanıt üretim biçimi değişir.
+> Not: Ana yapay zeka yanıt üretimi, demo sırasında yerel bir bilgisayarda çalışan Ollama
+> sunucusuna bağlıdır. O sunucu kapalıyken sistem otomatik olarak Claude bulut katmanına,
+> o da erişilemezse Temel Arama Modu'na geçer — hizmet hiçbir durumda kesintiye uğramaz,
+> sadece yanıt üretim biçimi değişir.
 
 ## MVP Gereksinimleri
 
@@ -162,7 +173,8 @@ Architecture) yapısında:
 ```
 Domain          → Varlıklar (entities), enum'lar, iş kuralı olmayan çekirdek modeller
 Application     → Servisler, DTO'lar, arayüzler (kullanım senaryoları)
-Infrastructure  → EF Core, Ollama istemcisi, e-posta (Brevo), Google/reCAPTCHA doğrulama
+Infrastructure  → EF Core, Ollama ve Claude istemcileri, sistem durum servisi,
+                  e-posta (Brevo), Google/reCAPTCHA doğrulama
 API             → Controller'lar, SignalR hub'ı, middleware, kimlik doğrulama
 ```
 
@@ -180,7 +192,8 @@ uygulamayı kullanır, arayüz ve erişilebilir sayfalar role göre değişir.
 - Entity Framework Core (SQL Server, Code-First migrations)
 - JWT Bearer kimlik doğrulama + BCrypt parola hash'leme
 - SignalR (canlı yanıt akışı ve bildirimler)
-- Ollama (qwen2.5:7b sohbet modeli, bge-m3 embedding modeli)
+- Ollama (qwen2.5:7b sohbet modeli, bge-m3 embedding modeli) — birincil RAG katmanı
+- Anthropic Claude API (claude-haiku-4-5) — Ollama erişilemediğinde devreye giren bulut RAG katmanı
 - Google Identity Services (ID token doğrulama) ve Google reCAPTCHA v2
 - Brevo (SMTP'siz, API tabanlı e-posta gönderimi)
 - Serilog, ASP.NET Core Rate Limiting, Health Checks
@@ -209,6 +222,14 @@ uygulamayı kullanır, arayüz ve erişilebilir sayfalar role göre değişir.
 - Sırlar (`appsettings.json`, `.env.local`) repoya dahil edilmez — bkz. [Yerel Kurulum](#yerel-kurulum)
 - Tüm veritabanı erişimi EF Core'un parametreli LINQ sorgu katmanı üzerinden yapılır (ham/interpolate edilmiş SQL veya `SqlCommand` kullanılmaz) — klasik SQL injection'a karşı yapısal olarak korunur
 - Dosya yükleme uç noktası uzantıya değil dosyanın gerçek baytlarına (magic number) bakarak doğrular — yeniden adlandırılmış/sahte dosya türleri PDF/DOCX ayrıştırıcısına ulaşmadan reddedilir — ve istek başına 20 MB boyut sınırı uygular
+- Veritabanı bağlantısı TLS ile şifrelenir (`Encrypt=True`)
+- Oturum açmış kullanıcı için site genelinde adres çubuğu yalnızca kök adresi gösterir — iç rota yolları tarayıcı geçmişine/adres çubuğuna yazılmaz (e-posta ile açılan şifre sıfırlama ve doğrulama bağlantıları bu davranışın dışındadır, çünkü doğrudan bağlantı olarak çalışmaları gerekir)
+
+## Ekip
+
+TeknoChat, **OmniMind** takımı tarafından T3 Vakfı Yapay Zekâ Creathonu Problem 5
+kapsamında geliştirilmiştir. Yazılım geliştirmede **Sümeyye Kartal**, **Mehmet Ali Taş**
+ve **Mustafa Ölmez**'in destekleri ile hazırlanmıştır.
 
 ## Yerel Kurulum
 
