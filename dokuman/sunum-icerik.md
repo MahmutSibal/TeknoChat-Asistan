@@ -88,7 +88,6 @@ Backend, Domain / Application / Infrastructure / API olmak üzere dört katmanl�
 - **qwen2.5:7b** — yerel Ollama sunucusu üzerinde çalışan, yanıt üretiminde kullanılan birincil dil modeli
 - **bge-m3** — soru ve kaynak parçalarını vektöre dönüştüren embedding modeli
 - **Claude API (claude-haiku-4-5)** — Ollama'ya erişilemediğinde devreye giren bulut tabanlı ikinci yanıt katmanı
-- **Claude Code** — projenin geliştirme sürecinde kod yazımı, güvenlik sertleştirmesi (rate limiting, güvenlik header'ları, dosya doğrulama), refactoring ve dokümantasyon için aktif olarak kullanıldı
 
 **Görsel:** ![Yapay Zeka Katmanları](resimler/slayt06-yapay-zeka.jpeg)
 
